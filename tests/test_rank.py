@@ -402,3 +402,33 @@ def test_find_top_issues():
         top_outlier_indices_k = rank.find_top_issues(quality_scores=ood_scores, top=k)
         assert len(top_outlier_indices_k) == k
         assert (top_outlier_indices_k == top_outlier_indices[:k]).all()  # scores consistent
+
+
+def test_normalized_margin_single_class():
+    single_class_labels = np.array([0, 0, 0])
+    single_class_pred_probs = np.array([[1.0], [0.9], [0.8]])
+    expected = np.array([1.0, 0.95, 0.9])
+
+    direct_scores = rank.get_normalized_margin_for_each_label(
+        single_class_labels, single_class_pred_probs
+    )
+    np.testing.assert_allclose(direct_scores, expected)
+
+    api_scores = rank.get_label_quality_scores(
+        single_class_labels, single_class_pred_probs, method="normalized_margin"
+    )
+    np.testing.assert_allclose(api_scores, expected)
+
+    float32_scores = rank.get_normalized_margin_for_each_label(
+        single_class_labels, single_class_pred_probs.astype(np.float32)
+    )
+    assert float32_scores.dtype == np.float32
+    np.testing.assert_allclose(float32_scores, expected.astype(np.float32))
+
+    ordered_issues = rank.order_label_issues(
+        label_issues_mask=np.array([True, True, True]),
+        labels=single_class_labels,
+        pred_probs=single_class_pred_probs,
+        rank_by="normalized_margin",
+    )
+    np.testing.assert_array_equal(ordered_issues, np.array([2, 1, 0]))

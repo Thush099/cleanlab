@@ -534,10 +534,13 @@ def get_normalized_margin_for_each_label(
 
     self_confidence = get_self_confidence_for_each_label(labels, pred_probs)
     N, K = pred_probs.shape
-    del_indices = np.arange(N) * K + labels
-    max_prob_not_label = np.max(
-        np.delete(pred_probs, del_indices, axis=None).reshape(N, K - 1), axis=-1
-    )
+    if K == 1:
+        max_prob_not_label = np.zeros(N, dtype=pred_probs.dtype)
+    else:
+        del_indices = np.arange(N) * K + labels
+        max_prob_not_label = np.max(
+            np.delete(pred_probs, del_indices, axis=None).reshape(N, K - 1), axis=-1
+        )
     label_quality_scores = (self_confidence - max_prob_not_label + 1) / 2
     return label_quality_scores
 

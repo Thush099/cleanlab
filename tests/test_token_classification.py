@@ -283,6 +283,41 @@ def test_issues_from_scores(label_quality_scores):
     assert issues_without[0] == 1
 
 
+@pytest.mark.parametrize(
+    "scores,threshold,expected",
+    [
+        (np.array([0.03, 0.01, 0.02]), 0.1, np.array([1, 2, 0])),
+        (np.array([0.01]), 0.1, np.array([0])),
+        (np.array([], dtype=float), 0.1, np.array([], dtype=int)),
+        (np.array([0.2, 0.3]), 1.0, np.array([0, 1])),
+        (np.array([0.1, 0.05]), 0.1, np.array([1])),
+        (np.array([0.5, 0.6, 0.9]), 0.1, np.array([], dtype=int)),
+    ],
+    ids=[
+        "all_below_threshold",
+        "single_element_below_threshold",
+        "empty_scores",
+        "all_below_unit_threshold",
+        "exact_threshold_excluded",
+        "none_below_threshold",
+    ],
+)
+def test_issues_from_scores_sentence_boundaries(scores, threshold, expected):
+    result = issues_from_scores(scores, threshold=threshold)
+    np.testing.assert_array_equal(result, expected)
+
+
+def test_issues_from_scores_pipeline_all_below_threshold():
+    sample_labels = [[0, 0, 1], [0, 1]]
+    sample_pred_probs = [
+        np.array([[0.9, 0.1], [0.7, 0.3], [0.05, 0.95]]),
+        np.array([[0.8, 0.2], [0.8, 0.2]]),
+    ]
+    sentence_scores, _ = get_label_quality_scores(sample_labels, sample_pred_probs)
+    result = issues_from_scores(sentence_scores, threshold=0.99)
+    np.testing.assert_array_equal(result, np.array([1, 0]))
+
+
 def test_display_issues():
     display_issues(issues, words)
     display_issues(issues, tokens=words, labels=labels)

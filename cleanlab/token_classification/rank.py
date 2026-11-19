@@ -214,11 +214,20 @@ def issues_from_scores(
     >>> issues_from_scores(sentence_scores, token_scores=token_scores)
     [(1, 0), (3, 1), (4, 2), (5, 3), (8, 0)]
     """
+    sentence_scores = np.asarray(sentence_scores, dtype=float)
+    if not np.isfinite(threshold):
+        raise ValueError("threshold must be finite")
+    if not np.isfinite(sentence_scores).all():
+        raise ValueError("sentence_scores must contain only finite values")
+
     if token_scores is not None:
         if len(token_scores) != len(sentence_scores):
             raise ValueError("token_scores must have one entry per sentence in sentence_scores.")
         issues_with_scores = []
         for sentence_index, scores in enumerate(token_scores):
+            scores = np.asarray(scores, dtype=float)
+            if not np.isfinite(scores).all():
+                raise ValueError("token_scores must contain only finite values")
             for token_index, score in enumerate(scores):
                 if score < threshold:
                     issues_with_scores.append((sentence_index, token_index, score))

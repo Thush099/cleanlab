@@ -307,6 +307,44 @@ def test_issues_from_scores_sentence_boundaries(scores, threshold, expected):
     np.testing.assert_array_equal(result, expected)
 
 
+@pytest.mark.parametrize(
+    "tokens",
+    [
+        [["Hello", "World"]],
+        [["Hello", "World"], ["#I", "love", "Cleanlab"], ["A"], ["extra"]],
+        [["Hello"], ["#I", "love", "Cleanlab"], ["A"]],
+    ],
+)
+def test_get_label_quality_scores_rejects_mismatched_token_annotations(tokens):
+    with pytest.raises(ValueError, match="tokens must match the label sentence and token counts"):
+        get_label_quality_scores(labels, pred_probs, tokens=tokens)
+
+
+def test_issues_from_scores_rejects_mismatched_sentence_counts():
+    sentence_scores = np.array([0.5])
+    token_scores = [[0.2], [0.1]]
+
+    with pytest.raises(ValueError, match="one entry per sentence"):
+        issues_from_scores(sentence_scores, token_scores=token_scores)
+
+
+@pytest.mark.parametrize("threshold", [np.nan, np.inf, -np.inf])
+def test_issues_from_scores_rejects_non_finite_threshold(threshold):
+    with pytest.raises(ValueError, match="threshold must be finite"):
+        issues_from_scores(np.array([0.2, 0.8]), threshold=threshold)
+
+
+@pytest.mark.parametrize("scores", [np.array([np.nan]), np.array([np.inf])])
+def test_issues_from_scores_rejects_non_finite_sentence_scores(scores):
+    with pytest.raises(ValueError, match="sentence_scores must contain only finite values"):
+        issues_from_scores(scores)
+
+
+def test_issues_from_scores_rejects_non_finite_token_scores():
+    with pytest.raises(ValueError, match="token_scores must contain only finite values"):
+        issues_from_scores(np.array([0.2]), token_scores=[[np.nan]])
+
+
 def test_issues_from_scores_pipeline_all_below_threshold():
     sample_labels = [[0, 0, 1], [0, 1]]
     sample_pred_probs = [

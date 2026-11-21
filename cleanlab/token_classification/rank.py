@@ -44,7 +44,7 @@ def get_label_quality_scores(
         Columns of each `pred_probs[i]` should be ordered such that the probabilities correspond to class 0, 1, ..., K-1.
 
     tokens:
-        Nested list such that `tokens[i]` is a list of tokens (strings/words) that comprise the `i`-th sentence.
+        Nested list such that `tokens[i]` is a list of tokens (strings/words) that comprise the `i`-th sentence. The number of sentences and tokens per sentence must match `labels`.
 
         These strings are used to annotated the returned `token_scores` object, see its documentation for more information.
 
@@ -103,6 +103,11 @@ def get_label_quality_scores(
     assert sentence_score_method in methods, "Select from the following methods:\n%s" % "\n".join(
         methods
     )
+    if tokens is not None:
+        if len(tokens) != len(labels):
+            raise ValueError("tokens must match the label sentence and token counts.")
+        if any(len(token_list) != len(label_list) for token_list, label_list in zip(tokens, labels)):
+            raise ValueError("tokens must match the label sentence and token counts.")
 
     labels_flatten = np.array([l for label in labels for l in label])
     pred_probs_flatten = np.array([p for pred_prob in pred_probs for p in pred_prob])
@@ -125,7 +130,7 @@ def get_label_quality_scores(
         temperature = sentence_score_kwargs.get("temperature", 0.05)
         sentence_scores = _softmin_sentence_score(scores_nl, temperature=temperature)
 
-    if tokens:
+    if tokens is not None:
         token_info = [pd.Series(scores, index=token) for scores, token in zip(scores_nl, tokens)]
     else:
         token_info = [pd.Series(scores) for scores in scores_nl]
@@ -157,7 +162,7 @@ def issues_from_scores(
         Same format as the `sentence_scores` returned by `~cleanlab.token_classification.rank.get_label_quality_scores`.
 
     token_scores:
-        Optional list such that `token_scores[i]` contains the individual token scores for the `i`-th sentence.
+        Optional list such that `token_scores[i]` contains the individual token scores for the `i`-th sentence. The list must have one entry per sentence in `sentence_scores`.
 
         Same format as the `token_scores` returned by `~cleanlab.token_classification.rank.get_label_quality_scores`.
 
@@ -209,9 +214,20 @@ def issues_from_scores(
     >>> issues_from_scores(sentence_scores, token_scores=token_scores)
     [(1, 0), (3, 1), (4, 2), (5, 3), (8, 0)]
     """
-    if token_scores:
+    sentence_scores = np.asarray(sentence_scores, dtype=float)
+    if not np.isfinite(threshold):
+        raise ValueError("threshold must be finite")
+    if not np.isfinite(sentence_scores).all():
+        raise ValueError("sentence_scores must contain only finite values")
+
+    if token_scores is not None:
+        if len(token_scores) != len(sentence_scores):
+            raise ValueError("token_scores must have one entry per sentence in sentence_scores.")
         issues_with_scores = []
         for sentence_index, scores in enumerate(token_scores):
+            scores = np.asarray(scores, dtype=float)
+            if not np.isfinite(scores).all():
+                raise ValueError("token_scores must contain only finite values")
             for token_index, score in enumerate(scores):
                 if score < threshold:
                     issues_with_scores.append((sentence_index, token_index, score))

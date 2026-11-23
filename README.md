@@ -284,3 +284,16 @@ To understand/cite other cleanlab functionality not described above, check out o
 **Interested in contributing?**  See the [contributing guide](CONTRIBUTING.md), [development guide](DEVELOPMENT.md), and [ideas on useful contributions](https://github.com/cleanlab/cleanlab/wiki#ideas-for-contributing-to-cleanlab).
 
 **Have questions?**  Check out [our FAQ](https://docs.cleanlab.ai/stable/tutorials/faq.html) and [Github Issues](https://github.com/cleanlab/cleanlab/issues?q=is%3Aissue).
+
+## Web UI
+
+A local label-quality inspector drives the real token-classification ranking in the browser:
+
+```bash
+python ui/server.py            # http://127.0.0.1:8132
+```
+
+Paste sentences with tokens, gold labels, and per-token predicted probabilities, then
+inspect per-token label-quality scores (color-coded) and the flagged issues most likely to
+be mislabeled. The server uses only the standard library and calls
+`cleanlab.token_classification.rank.get_label_quality_scores()` and `issues_from_scores()`.
